@@ -21,6 +21,7 @@ Below are some examples of Ken's works.
 <img src="reKnowlton/bin/data/knowlton_originals.jpg" width=800 height=210>
  <figcaption>Ken Knowlton Original Mosaics</figcaption>
 </figure>
+
 #### Process
 
 Instead of picking a single image to reproduced I decided to write an algorithm which could take an arbitrary target and source image and create an okay mosaic (non-optimal but approximate).  At the moment this is just based on brightness and so works best for b&w images but could be expanded to colours in the future using a similar methodology.
