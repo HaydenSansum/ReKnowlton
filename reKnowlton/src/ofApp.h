@@ -37,6 +37,8 @@ class ofApp : public ofBaseApp{
     int resolution;
     ofVec2f resize_size;
    
+    // Run mode
+    int run_mode;
     
     // Matrix of brightnesses
     vector <float> source_brightness;

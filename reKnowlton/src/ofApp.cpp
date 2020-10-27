@@ -4,11 +4,12 @@
 void ofApp::setup(){
 
     // Change these to select images
-    source_img.load("linh.jpg");
+    source_img.load("flavin.jpg");
     target_img.load("hayden.jpg");
     
     // Variables to tweak
-    resolution = 10; // The size of the squares used to recreate the image
+    resolution = 5; // The size of the squares used to recreate the image
+    run_mode = 0; // Run mode 0 = Image transfer, 1 = circle pixel
     
     // Change this size based on image aspect ratio and desired output size
     resize_size = ofVec2f(350, 650); // SPECIFIC TO TARGET IMAGE ASPECT RATIO - NOTE SOURCE MUST BE LARGER THAN THIS
@@ -26,6 +27,8 @@ void ofApp::setup(){
     }
     ofRandomize(target_indices);
     
+    // Set the matching brightness to the original so it can be modified in place
+    source_brightness_matching = source_brightness;
     
     for (int i = 0; i < target_indices.size(); i++) {
         int current_index = target_indices[i];
@@ -38,27 +41,52 @@ void ofApp::setup(){
     pixel_fbo.begin();
     for (int i = 0; i < target_brightness.size(); i++) {
             
-            ofVec2f position = get_pixel_location_from_index(i, h_grids);
-            
+        ofVec2f position = get_pixel_location_from_index(i, h_grids);
+        
+        if (run_mode == 0) {
+            // IMAGE TRANSFER MODE
             // X position
             int x_pos = ofMap(position[0], 0, w_grids, 0, ofGetWidth()/3);
-            x_pos = x_pos + resolution / 2;
             
             // Y Position
             int y_pos = ofMap(position[1], 0, h_grids, 0, ofGetHeight());
-            y_pos = y_pos + resolution / 2;
+        
             
             // Get the source pixel index for this given target pixel
             int source_index = target_to_source_indices[i];
+         
             ofVec2f source_position = get_pixel_location_from_index(source_index, h_grids);
-        
+
+            for (int a = 0; a < resolution; a++) {
+                for (int b = 0; b < resolution; b++) {
+                    int draw_x = x_pos + a;
+                    int draw_y = y_pos + b;
+                    ofColor cur_color = s_crop.getColor(source_position[0]*resolution+a,source_position[1]*resolution+b);
+                    ofSetColor(cur_color);
+                    ofDrawRectangle(draw_x, draw_y, 1, 1);
+                }
+            }
+        } else {
+            // PIXEL CIRCLE MODE
+            // X position
+            int x_pos = ofMap(position[0], 0, w_grids, 0, ofGetWidth()/3);
+            x_pos = x_pos + resolution / 2;
+
+            // Y Position
+            int y_pos = ofMap(position[1], 0, h_grids, 0, ofGetHeight());
+            y_pos = y_pos + resolution / 2;
+
+            //  Get the source pixel index for this given target pixel
+            int source_index = target_to_source_indices[i];
+            ofVec2f source_position = get_pixel_location_from_index(source_index, h_grids);
+            
             // Get the colour from source and set to brightness level
             ofColor cur_color = s_crop.getColor(source_position[0]*resolution-(resolution/2), source_position[1]*resolution-(resolution/2));
             float cur_brightness = source_brightness[source_index];
             cur_color.setBrightness(cur_brightness);
             ofSetColor(cur_color);
             ofDrawCircle(x_pos, y_pos, resolution/2);
-    
+        }
     }
     pixel_fbo.end();
     
@@ -83,16 +111,13 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 int ofApp::match_to_nearest_source(int current_index) {
     
-    // Set the matching brightness to the original so it can be modified in place
-    source_brightness_matching = source_brightness;
-    
     int best_match;
     
     float current_brightness = target_brightness[current_index];
     float cur_difference = 0;
     float min_difference = 99999;
     
-    for (int i=0; i < source_brightness.size(); i++) {
+    for (int i=0; i < source_brightness_matching.size(); i++) {
         
         cur_difference = abs(current_brightness - source_brightness_matching[i]);
         if(cur_difference < min_difference) {
