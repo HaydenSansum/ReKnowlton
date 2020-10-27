@@ -13,6 +13,8 @@ class ofApp : public ofBaseApp{
         void split_images_to_grid(ofImage c_img, ofImage t_img, int res);
         ofImage crop_image(ofImage img, int w_remainder, int h_remainder);
         float get_av_brightness(ofImage img, ofVec2f corner_pixel, int res);
+        ofVec2f get_pixel_location_from_index(int index, int h_num);
+        int match_to_nearest_source(int current_index);
     
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -37,8 +39,12 @@ class ofApp : public ofBaseApp{
    
     
     // Matrix of brightnesses
-    vector <vector<float>> source_brightness;
-    vector <vector<float>> target_brightness;
+    vector <float> source_brightness;
+    vector <float> target_brightness;
+    vector <float> source_brightness_matching;
+    
+    vector < int > target_indices;
+    vector < int > target_to_source_indices;
     
     // For screenshots
     ofImage save_img;

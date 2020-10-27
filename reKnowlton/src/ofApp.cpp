@@ -4,7 +4,7 @@
 void ofApp::setup(){
 
     // Change these to select images
-    source_img.load("scenery.jpg");
+    source_img.load("linh.jpg");
     target_img.load("hayden.jpg");
     
     // Variables to tweak
@@ -15,34 +15,52 @@ void ofApp::setup(){
         
     // Calculate the correct number of squares to divide up images
     split_images_to_grid(source_img, target_img, resolution);
+    int w_grids = resize_size[0] / resolution;
+    int h_grids = resize_size[1] / resolution;
     
-    //Set up fbo
+    
+    // Match the target image point to the nearest source image point (randomly)
+    for (int i = 0; i < target_brightness.size(); i++){
+        target_indices.push_back(i);
+        target_to_source_indices.push_back(0); //initialize to zeros
+    }
+    ofRandomize(target_indices);
+    
+    
+    for (int i = 0; i < target_indices.size(); i++) {
+        int current_index = target_indices[i];
+        target_to_source_indices[current_index] = match_to_nearest_source(current_index);
+    }
+    
+    
+    //Set up FBO - just for test drawing
     pixel_fbo.allocate(resize_size[0], resize_size[1], GL_RGBA);
     pixel_fbo.begin();
     for (int i = 0; i < target_brightness.size(); i++) {
-        for (int j = 0; j < target_brightness[0].size(); j++) {
+            
+            ofVec2f position = get_pixel_location_from_index(i, h_grids);
             
             // X position
-            int x_pos = ofMap(i, 0, target_brightness.size(), 0, ofGetWidth()/3);
+            int x_pos = ofMap(position[0], 0, w_grids, 0, ofGetWidth()/3);
             x_pos = x_pos + resolution / 2;
             
             // Y Position
-            int y_pos = ofMap(j, 0, target_brightness[0].size(), 0, ofGetHeight());
+            int y_pos = ofMap(position[1], 0, h_grids, 0, ofGetHeight());
             y_pos = y_pos + resolution / 2;
             
-            // Get pixel brightness
-            float cur_brightness = target_brightness[i][j];
-            cout << cur_brightness << endl;
-            ofSetColor((int) cur_brightness);
+            // Get the source pixel index for this given target pixel
+            int source_index = target_to_source_indices[i];
+            ofVec2f source_position = get_pixel_location_from_index(source_index, h_grids);
+        
+            // Get the colour from source and set to brightness level
+            ofColor cur_color = s_crop.getColor(source_position[0]*resolution-(resolution/2), source_position[1]*resolution-(resolution/2));
+            float cur_brightness = source_brightness[source_index];
+            cur_color.setBrightness(cur_brightness);
+            ofSetColor(cur_color);
             ofDrawCircle(x_pos, y_pos, resolution/2);
-        }
+    
     }
     pixel_fbo.end();
-    
-    //
-    int k = 0;
-    
-    
     
 }
 
@@ -60,6 +78,45 @@ void ofApp::draw(){
     
     // Draw pixel representation
     pixel_fbo.draw(700,0);
+}
+
+//--------------------------------------------------------------
+int ofApp::match_to_nearest_source(int current_index) {
+    
+    // Set the matching brightness to the original so it can be modified in place
+    source_brightness_matching = source_brightness;
+    
+    int best_match;
+    
+    float current_brightness = target_brightness[current_index];
+    float cur_difference = 0;
+    float min_difference = 99999;
+    
+    for (int i=0; i < source_brightness.size(); i++) {
+        
+        cur_difference = abs(current_brightness - source_brightness_matching[i]);
+        if(cur_difference < min_difference) {
+            min_difference = cur_difference;
+            best_match = i;
+        }
+        
+    }
+    // Set the brightness value to be a crazy value so it wont match again
+    source_brightness_matching[best_match] = 999999;
+    
+    return best_match;
+}
+
+
+//--------------------------------------------------------------
+ofVec2f ofApp::get_pixel_location_from_index(int index, int h_num) {
+    
+    ofVec2f pix_loc;
+    int x_pos = floor((float) index / (float) h_num);
+    int y_pos = index % h_num;
+    pix_loc = ofVec2f(x_pos, y_pos);
+    
+    return pix_loc;
 }
 
 //--------------------------------------------------------------
@@ -96,16 +153,22 @@ void ofApp::split_images_to_grid(ofImage s_img, ofImage t_img, int res) {
     
     // Find and store the brightness of the target
     for (int i = 0; i < t_cols; i++) {
-        vector <float> column_vector;
         int col_pixel_index = ofMap(i, 0, t_cols, 0, t_crop.getWidth());
-        //col_pixel_index = col_pixel_index + res/ 2;
-        for (int j = 0; j < s_rows; j++) {
+        for (int j = 0; j < t_rows; j++) {
             int pixel_index = ofMap(j, 0, t_rows, 0, t_crop.getHeight());
-            //pixel_index = pixel_index + res / 2;
             float av_brightness = get_av_brightness(t_crop, ofVec2f(col_pixel_index, pixel_index), res);
-            column_vector.push_back(av_brightness);
+            target_brightness.push_back(av_brightness);
         }
-        target_brightness.push_back(column_vector);
+    }
+    
+    // Find and store the brightness of the source - single vector
+    for (int i = 0; i < s_cols; i++) {
+        int col_pixel_index = ofMap(i, 0, s_cols, 0, s_crop.getWidth());
+        for (int j = 0; j < s_rows; j++) {
+            int pixel_index = ofMap(j, 0, s_rows, 0, s_crop.getHeight());
+            float av_brightness = get_av_brightness(s_crop, ofVec2f(col_pixel_index, pixel_index), res);
+            source_brightness.push_back(av_brightness);
+        }
     }
 }
 
